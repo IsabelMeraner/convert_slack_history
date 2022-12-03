@@ -6,7 +6,7 @@
 Conversion from slack channel history for teams migration.
 
 # how to run:
-$ python3 get_slack_history.py --path PATH_TO_INPUT_FOLDER
+$ python3 convert_slack_history.py --path PATH_TO_INPUT_FOLDER
 """
 
 import argparse
@@ -23,7 +23,15 @@ def process_msg(msg):
     date = datetime.utcfromtimestamp(float(msg['ts'])).strftime('%Y-%m-%d %H:%M:%S')
     return person, text, date
 
+def prepare_files(channel_path):
+    files = list(os.listdir(channel_path))
+    files.sort(key=lambda x: datetime.strptime(x.strip('.json'), "%Y-%m-%d"))
+    return files
 
+def get_channels(root_dir):
+    for subdir, dirs, files in os.walk(root_dir):
+        if dirs:
+            return dirs
 def main():
     argparser = argparse.ArgumentParser(
         description='Convert slack json history to channel txt output files.')
@@ -37,11 +45,11 @@ def main():
     args = argparser.parse_args()
     root_dir = args.path
 
-    for subdir, dirs, files in os.walk(root_dir):
-        if dirs:
-            channels = dirs
 
+    channels = get_channels(root_dir)
     print('# CHANNELS: {}'.format(channels))
+
+    # process single data files for each exported slack channel
     for channel in channels:
         with open('./output_{}.txt'.format(channel), 'w') as outfile:
             channel_path = os.path.join(root_dir, channel)
@@ -49,10 +57,7 @@ def main():
             # print('\t# CHANNEL PATH{}'.format(channel_path))
 
             # iterate files
-            files = list(os.listdir(channel_path))
-            files.sort(key=lambda x: datetime.strptime(x.strip('.json'), "%Y-%m-%d"))
-
-            for json_file in files:
+            for json_file in prepare_files(channel_path):
                 f = os.path.join(channel_path, json_file)
                 if os.path.isfile(f):
                     print("\t\t# PROCESSING FILE: {}".format(f))
